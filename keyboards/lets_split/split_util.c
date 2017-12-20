@@ -58,7 +58,7 @@ i2c_error: // the cable is disconnceted, or something else went wrong
 static void keyboard_master_setup(void) {
 #ifdef USE_I2C
     i2c_master_init();
-    rtc_init();
+    rtc_init(); //PCF2127 Initialize
 #ifdef SSD1306OLED
     matrix_master_OLED_init ();
 #endif
