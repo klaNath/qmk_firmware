@@ -1,6 +1,7 @@
 #include "lets_split.h"
 #include "action_layer.h"
 #include "eeconfig.h"
+#include "i2c.h"
 
 extern keymap_config_t keymap_config;
 
@@ -22,11 +23,40 @@ enum custom_keycodes {
   LOWER,
   RAISE,
   ADJUST,
+  I2CTEST
 };
 
 // Fillers to make layering more clear
 #define _______ KC_TRNS
 #define XXXXXXX KC_NO
+
+//I2C test
+#define I2C_RTC_ADDR 0xA2
+
+void i2c_test_transaction(void){
+
+    int err = i2c_master_start(I2C_RTC_ADDR + I2C_WRITE);
+    if (err) goto i2c_error;
+
+    // start of matrix stored at 0x00
+    err = i2c_master_write(0x03);
+    if (err) goto i2c_error;
+    i2c_master_stop();
+
+    // Start read
+    err = i2c_master_start(I2C_RTC_ADDR + I2C_READ);
+    if (err) goto i2c_error;
+
+    if (!err) {
+        i2c_master_read(I2C_NACK);
+        i2c_master_stop();
+    } else {
+i2c_error: // the cable is disconnceted, or something else went wrong
+        i2c_reset_state();
+        return;
+    }
+    return;
+}
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
@@ -124,7 +154,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * ,-----------------------------------------------------------------------------------.
  * |      | Reset|      |      |      |      |      |      |      |      |      |  Del |
  * |------+------+------+------+------+-------------+------+------+------+------+------|
- * |      |      |      |Aud on|Audoff|AGnorm|AGswap|Qwerty|Colemk|Dvorak|      |      |
+ * |      |      |      |Aud on|Audoff|AGnorm|AGswap|Qwerty|Colemk|Dvorak|I2CTEST|      |
  * |------+------+------+------+------+------|------+------+------+------+------+------|
  * |      |      |      |      |      |      |      |      |      |      |      |      |
  * |------+------+------+------+------+------+------+------+------+------+------+------|
@@ -133,11 +163,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  */
 [_ADJUST] =  KEYMAP( \
   _______, RESET,   _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_DEL, \
-  _______, _______, _______, AU_ON,   AU_OFF,  AG_NORM, AG_SWAP, QWERTY,  COLEMAK, DVORAK,  _______, _______, \
+  _______, _______, _______, AU_ON,   AU_OFF,  AG_NORM, AG_SWAP, QWERTY,  COLEMAK, DVORAK,  I2CTEST, _______, \
   _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, \
   _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______ \
 )
-
+//
 
 };
 
@@ -154,6 +184,12 @@ void persistent_default_layer_set(uint16_t default_layer) {
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
   switch (keycode) {
+    case I2CTEST:
+      if (record->event.pressed) {
+        i2c_test_transaction();
+      }
+      return false;
+      break;
     case QWERTY:
       if (record->event.pressed) {
         #ifdef AUDIO_ENABLE

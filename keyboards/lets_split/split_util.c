@@ -16,6 +16,8 @@
 #  include "serial.h"
 #endif
 
+#define I2C_RTC_ADDR 0xA2
+
 volatile bool isLeftHand = true;
 
 static void setup_handedness(void) {
@@ -31,9 +33,32 @@ static void setup_handedness(void) {
   #endif
 }
 
+static void rtc_init(void){
+  int err = i2c_master_start(I2C_RTC_ADDR + I2C_WRITE);
+    if (err) goto i2c_error;
+
+    // start of matrix stored at 0x00
+    err = i2c_master_write(0x00);
+    if (err) goto i2c_error;
+
+    i2c_master_write(0x00);
+    i2c_master_write(0x00);
+    i2c_master_write(0x00);
+
+    if (!err) {
+        i2c_master_stop();
+    } else {
+i2c_error: // the cable is disconnceted, or something else went wrong
+        i2c_reset_state();
+        return;
+    }
+    return;
+}
+
 static void keyboard_master_setup(void) {
 #ifdef USE_I2C
     i2c_master_init();
+    rtc_init();
 #ifdef SSD1306OLED
     matrix_master_OLED_init ();
 #endif
